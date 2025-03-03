@@ -36,3 +36,11 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+
+# cursor
+.cursor/architecture.md
+.cursor/tasks.md
+
+# screenshots Browser Tools MCP 
+screenshots/
