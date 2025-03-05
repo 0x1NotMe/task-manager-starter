@@ -146,6 +146,55 @@ const taskData = ethers.utils.defaultAbiCoder.encode(
 // 4. Now taskData is ready to be used in scheduleTask
 ```
 
+### TypeScript Task Encoding with Viem
+
+For modern TypeScript applications using Viem:
+
+```typescript
+import { encodeFunctionData, encodeAbiParameters, parseAbiParameters } from 'viem';
+
+// 1. Define the target contract and ABI
+const targetAddress = '0x123...' as `0x${string}`;
+const targetAbi = [{
+  name: 'updatePrice',
+  type: 'function',
+  inputs: [{ name: 'newPrice', type: 'uint256' }],
+  outputs: [],
+  stateMutability: 'nonpayable'
+}];
+
+// 2. Encode the function call
+const targetCalldata = encodeFunctionData({
+  abi: targetAbi,
+  functionName: 'updatePrice',
+  args: [100n] // BigInt for Viem
+});
+
+// 3. Pack the target address with the function call data
+const taskData = encodeAbiParameters(
+  parseAbiParameters(['address', 'bytes']),
+  [targetAddress, targetCalldata]
+);
+
+// 4. Now taskData is ready to be used with the Task Manager
+// Connect to Task Manager with Viem wallet client
+const taskTxHash = await walletClient.writeContract({
+  address: taskManagerAddress,
+  abi: taskManagerAbi,
+  functionName: 'scheduleTask',
+  args: [
+    executionEnvironmentAddress,
+    100000n, // gas limit
+    BigInt(targetBlock), // target block
+    parseEther('0.01'), // max payment
+    taskData // encoded task data
+  ]
+});
+
+// Wait for transaction receipt
+const receipt = await publicClient.waitForTransactionReceipt({ hash: taskTxHash });
+```
+
 ### Advanced Task Data Encoding (with retry)
 
 For the retry execution environment:
@@ -155,6 +204,16 @@ For the retry execution environment:
 const taskData = ethers.utils.defaultAbiCoder.encode(
   ['address', 'bytes', 'uint8'],
   [targetContract, targetCalldata, 0] // 0 = initial attempt
+);
+```
+
+Using Viem for the retry execution environment:
+
+```typescript
+// With retry parameter
+const taskDataWithRetry = encodeAbiParameters(
+  parseAbiParameters(['address', 'bytes', 'uint8']),
+  [targetAddress, targetCalldata, 0] // 0 = initial attempt
 );
 ```
 
@@ -199,6 +258,34 @@ console.log(`
   Target Block: ${status.targetBlock}
   Owner: ${status.owner}
   Fee Estimate: ${ethers.utils.formatEther(status.feeEstimate)} MONAD
+`);
+```
+
+With Viem:
+
+```typescript
+// Check if a task has been executed
+const isExecuted = await publicClient.readContract({
+  address: taskManagerAddress,
+  abi: taskManagerAbi,
+  functionName: 'isTaskExecuted',
+  args: [taskId]
+});
+
+// Get detailed task status
+const status = await publicClient.readContract({
+  address: taskManagerAddress,
+  abi: taskManagerAbi,
+  functionName: 'getTaskStatus',
+  args: [taskId]
+});
+
+console.log(`
+  Status: ${status[0]}
+  Scheduled Block: ${status[1]}
+  Target Block: ${status[2]}
+  Owner: ${status[3]}
+  Fee Estimate: ${formatEther(status[4])} MONAD
 `);
 ```
 
@@ -247,6 +334,119 @@ const receipt = await tx.wait();
 console.log(`Task scheduled in transaction ${receipt.transactionHash}`);
 ```
 
+## TypeScript Example: Recurring Pricing Updates
+
+Here's a complete example in TypeScript using Viem for a recurring price update task:
+
+```typescript
+import { 
+  createPublicClient, createWalletClient, 
+  http, parseAbiParameters, encodeFunctionData, 
+  encodeAbiParameters, formatEther, parseEther 
+} from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { monad } from './chains';
+
+// Setup clients
+const publicClient = createPublicClient({
+  chain: monad,
+  transport: http(process.env.RPC_URL)
+});
+
+const account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`);
+const walletClient = createWalletClient({
+  account,
+  chain: monad,
+  transport: http(process.env.RPC_URL)
+});
+
+// Contract ABIs
+const taskManagerAbi = [...]; // Task Manager ABI
+const priceOracleAbi = [{
+  name: 'updatePrice',
+  type: 'function',
+  inputs: [
+    { name: 'symbol', type: 'string' },
+    { name: 'price', type: 'uint256' }
+  ],
+  outputs: [],
+  stateMutability: 'nonpayable'
+}];
+
+// Contract addresses
+const taskManagerAddress = '0xTaskManager...' as `0x${string}`;
+const executionEnvAddress = '0xExecutionEnv...' as `0x${string}`;
+const priceOracleAddress = '0xPriceOracle...' as `0x${string}`;
+
+async function scheduleRecurringPriceUpdate() {
+  // 1. Get current block
+  const currentBlock = await publicClient.getBlockNumber();
+  
+  // 2. Calculate target block (1 hour from now)
+  const blocksPerHour = 1800n; // Assuming 2-second blocks
+  const targetBlock = currentBlock + blocksPerHour;
+  
+  // 3. Encode the price update call
+  const priceUpdateCalldata = encodeFunctionData({
+    abi: priceOracleAbi,
+    functionName: 'updatePrice',
+    args: ['ETH', parseEther('1800')] // $1800 for ETH
+  });
+  
+  // 4. Pack with target address
+  const taskData = encodeAbiParameters(
+    parseAbiParameters(['address', 'bytes']),
+    [priceOracleAddress, priceUpdateCalldata]
+  );
+  
+  // 5. Estimate task cost
+  const estimatedCost = await publicClient.readContract({
+    address: taskManagerAddress,
+    abi: taskManagerAbi,
+    functionName: 'estimateCost',
+    args: [targetBlock, 150000n]
+  });
+  
+  console.log(`Estimated task cost: ${formatEther(estimatedCost)} MONAD`);
+  
+  // 6. Schedule task with 2x cost buffer
+  const maxPayment = estimatedCost * 2n;
+  
+  const txHash = await walletClient.writeContract({
+    address: taskManagerAddress,
+    abi: taskManagerAbi,
+    functionName: 'scheduleTask',
+    args: [
+      executionEnvAddress,
+      150000n, // Gas limit
+      targetBlock,
+      maxPayment,
+      taskData
+    ]
+  });
+  
+  console.log(`Task scheduled in transaction: ${txHash}`);
+  
+  // 7. Wait for receipt
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+  
+  // 8. Extract task ID from logs
+  // This depends on how Task Manager emits events
+  const taskScheduledEvent = receipt.logs.find(log => 
+    log.topics[0] === '0x...' // Task scheduled event signature
+  );
+  
+  // Assuming taskId is the second indexed parameter
+  const taskId = taskScheduledEvent?.topics[1];
+  console.log(`Task ID: ${taskId}`);
+  
+  return taskId;
+}
+
+// Call the function to schedule the task
+scheduleRecurringPriceUpdate().catch(console.error);
+```
+
 ## Best Practices for Custom Tasks
 
 1. **Gas Optimization:**
@@ -273,3 +473,9 @@ console.log(`Task scheduled in transaction ${receipt.transactionHash}`);
 5. **Testing:**
    - Test your execution environment with different inputs
    - Verify task execution in a test environment before deploying to mainnet
+
+## Additional References
+
+For broader context and integration details, see the following local docs:
+- [starter-kit.md](./starter-kit.md) – Provides an overview of the Task Manager Starter Kit and basic setup instructions.
+- [interfaces.md](./interfaces.md) – Contains detailed contract interfaces, including ITaskManager, IShmonad, and IExecutionEnvironment definitions.
