@@ -1,6 +1,401 @@
 ---
-description: 
+description: Task-Manager Integration
 globs: 
 alwaysApply: false
 ---
- 
+---
+description: Guidelines for building Task Manager integrations in React/Next.js + Hono
+globs: apps/**/*.ts *.sol
+alwaysApply: false
+---
+# Task Manager Integration Guidelines
+
+<task_manager_architecture>
+The Task Manager is a decentralized system designed to schedule and execute smart contract tasks on the Monad blockchain.
+It has two core components:
+- TaskManager: The main contract for scheduling, executing, and managing tasks
+- shMONAD: The token contract used for bonding (securing tasks)
+</task_manager_architecture>
+
+<tech_stack>
+- **Viem**: For Ethereum/Monad contract interactions
+- **React Query**: For data fetching and caching
+- **Next.js**: For frontend rendering
+- **Hono**: For backend API routes (if needed)
+</tech_stack>
+
+<project_structure>
+apps/
+  ├── api/ (Hono-based backend)
+  │   └── src/
+  │       └── modules/
+  │           └── taskmanager/  # Optional backend proxy for task manager
+  │               ├── taskmanager.routes.ts
+  │               └── taskmanager.service.ts
+  ├── web/ (Next.js frontend)
+  │   └── src/
+  │       ├── api/
+  │       │   └── taskmanager.api.ts   # Viem-based contract calls
+  │       ├── contracts/
+  │       │   ├── abis/
+  │       │   │   ├── ITaskManager.json
+  │       │   │   ├── IShmonad.json
+  │       │   │   └── AddressHub.json
+  │       │   └── constants.ts
+  │       ├── hooks/
+  │       │   ├── useTaskManager.ts    # Contract interaction hooks
+  │       │   └── useWallet.ts         # Wallet connection hooks
+  │       └── app/
+  │           ├── tasks/
+  │           │   └── page.tsx         # Task management UI
+  │           ├── stake/
+  │           │   └── page.tsx         # shMONAD staking UI
+  │           └── bond/
+  │               └── page.tsx         # Bonding tokens to tasks UI
+packages/
+  └── contracts/         ract package
+      ├── src/
+      │   ├── abis/
+      │   │   ├── ITaskManag
+      │   │   └── AddressHub.json
+      │   └── index.ts
+</project_structure>
+
+<implementatinents
+
+### 1. Contract ABIs and Constants
+
+Storapps/web/src/contracts/abis/` or create a shared package in `packages/contracts/`.
+
+For example in `apps/web/src/contracts/constants.ts`:
+```ts
+export const MONAD_CHAIN_ID = 10143; // Testnet Chain ID
+export const ADDRESS_HUB = "0xC9f0cDE8316AbC5Efc8C3f5A6b571e815C021B51";
+```
+
+### 2. API Layer
+
+Create a dedicated file for contract interactions in `apps/web/src/api/taskmanager.api.ts`:
+
+```ts
+import { createPublicClient, createWalletClient, http } from 'viem';
+import { monad } from 'viem/chains'; // Create this if needed
+import { getAccount } from '@/lib/auth';
+import { ADDRESS_HUB } from '@/contracts/constants';
+import addressHubAbi from '@/contracts/abis/AddressHub.json';
+import taskManagerAbi from '@/contracts/abis/ITaskManager.json';
+import shmonadAbi from '@/contracts/abis/IShmonad.json';
+
+// Initialize clients
+const publicClient = createPublicClient({ 
+  chain: monad,
+  transport: http(process.env.NEXT_PUBLIC_RPC_URL)
+});
+
+// Get contract addresses from hub
+export async function getContractAddresses() {
+  const addressHub = { address: ADDRESS_HUB as `0x${string}`, abi: addressHubAbi };
+  
+  const taskManagerAddress = await publicClient.readContract({
+    ...addressHub,
+    functionName: 'getTaskManagerAddress',
+  });
+  
+  const shmonadAddress = await publicClient.readContract({
+    ...addressHub,
+    functionName: 'getShmonadAddress',
+  });
+  
+  return { taskManagerAddress, shmonadAddress };
+}
+
+// Bond balance functions
+export async function getBondedBalance(address: string) {
+  const { shmonadAddress } = await getContractAddresses();
+  
+  return publicClient.readContract({
+    address: shmonadAddress,
+    abi: shmonadAbi,
+    functionName: 'bondedBalanceOf',
+    args: [address]
+  });
+}
+
+// Task scheduling functions
+export async function scheduleTask({
+  walletClient,
+  implementation,
+  taskGasLimit,
+  targetBlock,
+  maxPayment,
+  taskData
+}: {
+  walletClient: any;
+  implementation: `0x${string}`;
+  taskGasLimit: bigint;
+  targetBlock: bigint;
+  maxPayment: bigint;
+  taskData: `0x${string}`;
+}) {
+  const { taskManagerAddress } = await getContractAddresses();
+  const account = await getAccount();
+  
+  return walletClient.writeContract({
+    address: taskManagerAddress,
+    abi: taskManagerAbi,
+    functionName: 'scheduleTask',
+    args: [implementation, taskGasLimit, targetBlock, maxPayment, taskData],
+    account
+  });
+}
+
+// Task execution functions
+export async function executeTasks({
+  walletClient,
+  payoutAddress
+}: {
+  walletClient: any;
+  payoutAddress: `0x${string}`;
+}) {
+  const { taskManagerAddress } = await getContractAddresses();
+  const account = await getAccount();
+  
+  return walletClient.writeContract({
+    address: taskManagerAddress,
+    abi: taskManagerAbi,
+    functionName: 'executeTasks',
+    args: [payoutAddress, 0], // 0 for unlimited tasks
+    account
+  });
+}
+```
+
+### 3. React Hooks
+
+Create custom hooks for task manager interactions in `apps/web/src/hooks/useTaskManager.ts`:
+
+```ts
+"use client";
+
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { getBondedBalance, scheduleTask, executeTasks } from '@/api/taskmanager.api';
+import { useWallet } from './useWallet';
+
+export function useBondedBalance(address?: string) {
+  const { address: walletAddress } = useWallet();
+  const finalAddress = address || walletAddress;
+  
+  return useQuery({
+    queryKey: ['bondedBalance', finalAddress],
+    queryFn: () => getBondedBalance(finalAddress!),
+    enabled: !!finalAddress
+  });
+}
+
+export function useScheduleTask() {
+  const { walletClient } = useWallet();
+  
+  return useMutation({
+    mutationFn: (params: {
+      implementation: `0x${string}`;
+      taskGasLimit: bigint;
+      targetBlock: bigint;
+      maxPayment: bigint;
+      taskData: `0x${string}`;
+    }) => scheduleTask({
+      walletClient,
+      ...params
+    })
+  });
+}
+
+export function useExecuteTasks() {
+  const { walletClient, address } = useWallet();
+  
+  return useMutation({
+    mutationFn: (params?: { payoutAddress?: `0x${string}` }) => executeTasks({
+      walletClient,
+      payoutAddress: params?.payoutAddress || address as `0x${string}`
+    })
+  });
+}
+```
+
+Create a wallet hook in `apps/web/src/hooks/useWallet.ts`:
+
+```ts
+"use client";
+
+import { useState, useEffect } from 'react';
+import { createWalletClient, custom } from 'viem';
+import { monad } from 'viem/chains'; // Create this if needed
+
+export function useWallet() {
+  const [address, setAddress] = useState<string | undefined>();
+  const [walletClient, setWalletClient] = useState<any | undefined>();
+  
+  useEffect(() => {
+    const connectWallet = async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          // Request account access
+          const accounts = await window.ethereum.request({ 
+            method: 'eth_requestAccounts' 
+          });
+          
+          setAddress(accounts[0]);
+          
+          // Create wallet client
+          const client = createWalletClient({
+            chain: monad,
+            transport: custom(window.ethereum)
+          });
+          
+          setWalletClient(client);
+        } catch (error) {
+          console.error('Error connecting to wallet:', error);
+        }
+      } else {
+        console.error('No Ethereum provider found. Install MetaMask or another wallet.');
+      }
+    };
+    
+    connectWallet();
+  }, []);
+  
+  return { address, walletClient };
+}
+```
+</implementation_guide>
+
+<best_practices>
+## Best Practices for Task Manager Integration
+
+### 1. Contract Interactions
+- Always verify bonds before scheduling tasks
+- Calculate gas requirements carefully
+- Implement proper error handling for failed transactions
+- Properly encode task data as documented
+
+### 2. Security Considerations
+- Never expose private keys in the frontend
+- Validate inputs before submitting transactions
+- Implement proper error boundaries in React components
+- Always check for sufficient bond balances
+
+### 3. User Experience
+- Display clear error messages for common issues
+- Show pending transaction status
+- Implement proper loading states
+- Provide task history and execution status
+
+### 4. Performance
+- Use React Query's caching for frequently accessed data
+- Implement optimistic updates for better UX
+- Batch read operations where possible
+
+### 5. Architecture
+- Separate concerns between API calls, hooks, and UI components
+- Always make direct calls via RPC (preferable connected wallet)
+- Use TypeScript interfaces for type safety
+- Follow frontend architecture guidelines from frontend.mdc
+- Follow API architecture guidelines from api.mdc if creating backend proxies
+</best_practices>
+
+<example_workflow>
+## Example Workflow
+
+### Task Scheduling Workflow
+1. User connects wallet
+2. Check bonded balance
+3. If insufficient, prompt to bond tokens
+4. User fills task parameters
+5. Encode task data
+6. Schedule task
+7. Show confirmation and provide task ID
+
+### Task Execution Workflow
+1. User connects wallet
+2. View pending tasks
+3. Execute pending tasks
+4. Show execution results and fees earned
+
+### Bond Management Workflow
+1. User connects wallet
+2. Check current bond balance
+3. Deposit and bond additional tokens if needed
+4. View bond status across different policies
+</example_workflow>
+
+<troubleshooting>
+## Common Issues and Troubleshooting
+
+### 1. Insufficient Bonds
+- Error: "Insufficient bonded tokens"
+- Solution: Check and increase bond amount
+
+### 2. Invalid Task Data
+- Error: "Invalid task data format"
+- Solution: Verify proper encoding of task data
+
+### 3. Execution Environment Issues
+- Error: "Execution environment not found"
+- Solution: Verify implementation address is correct
+
+### 4. Network Connection
+- Error: "Failed to connect to RPC endpoint"
+- Solution: Check RPC URL and network status
+
+### 5. Gas Estimation Failures
+- Error: "Gas estimation failed"
+- Solution: Increase gas limit or check task logic
+</troubleshooting>
+
+## Integration Instructions
+
+1. **AddressHub Setup**  
+   - Retrieve contract addresses from the AddressHub (TaskManager, shMONAD, etc.).  
+   - Always configure `.env` properly with RPC URL, private key, and AddressHub address.
+   - For details, see [starter-kit.md](mdc:../docs/starter-kit.md).
+
+2. **Bond Preparation**  
+   - Verify or establish sufficient bonds (shMONAD tokens) before scheduling tasks.  
+   - Use a safety margin (e.g., 2x) to handle fluctuations in fees.  
+   - Refer to [interfaces.md](mdc:../docs/interfaces.md#ishmonad) for bonding functions.
+
+3. **Task Encoding**  
+   - Encode contract calls using `abi.encodeCall(...)` or `encodeFunctionData`.  
+   - Pack the target address and call data.
+   - See [custom-tasks.md](mdc:../docs/custom-tasks.md) for detailed examples.
+
+4. **Scheduling**  
+   - Use `taskManager.scheduleTask(...)` with:  
+     - The execution environment address.  
+     - A gas limit classification that matches your task (small, medium, large).  
+     - A target block (plus buffer if necessary).  
+     - A maximum payment limit.  
+     - Properly encoded `taskData`.
+
+5. **Execution Flow**  
+   - Call `taskManager.executeTasks(...)` to trigger pending task execution.  
+   - Verify results using `taskManager.isTaskExecuted(taskId)`.  
+   - Inspect emitted events (in custom or built-in EEs) for detailed logging and status.
+
+6. **Advanced Features**  
+   - **Custom Execution Environments**: Implement specialized logic like rescheduling, input validation, and custom error handling.  
+   - **Authorization & Cancellation**: Use the hierarchical authorization model to manage who can cancel tasks.  
+   - **Economic Security**: Understand fee calculations, dynamic bonding, and how fees are distributed upon successful execution.
+
+## Usage Scenarios
+
+- **Basic Scheduling**: Follow the quick start in [starter-kit.md](mdc:../docs/starter-kit.md) for setting up your development environment and scheduling basic tasks.
+- **Custom Tasks**: Refer to [custom-tasks.md](mdc:../docs/custom-tasks.md) for creating specialized execution environments, implementing retry logic, and handling complex task flows.
+- **Contract Interactions**: Review [interfaces.md](mdc:../docs/interfaces.md) for detailed information on interacting with the Task Manager, shMONAD, and other core contracts.
+
+## Additional References
+
+For more in-depth usage and details, see the local documentation files in the `docs/` directory:
+
+- [starter-kit.md](mdc:../docs/starter-kit.md) – Overview of the Task Manager Starter Kit and basic setup instructions
+- [custom-tasks.md](mdc:../docs/custom-tasks.md) – Guide for creating advanced tasks, including custom execution environments and retry logic
+- [interfaces.md](mdc:../docs/interfaces.md) – Detailed contract interfaces for ITaskManager, IShmonad, and other Task Manager components
