@@ -13,8 +13,7 @@ import { useNativeBalance, formatBalance } from "@/hooks/useNativeBalance";
 const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/tasks', label: 'Tasks' },
-  { href: '/stake', label: 'Stake' },
-  { href: '/bond', label: 'Bond' },
+  { href: '/funds', label: 'Funds' },
   { href: '/history', label: 'History' },
   { href: '/about', label: 'About' }
 ];
