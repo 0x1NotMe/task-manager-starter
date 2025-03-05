@@ -15,7 +15,6 @@ const navLinks = [
   { href: '/tasks', label: 'Tasks' },
   { href: '/stake', label: 'Stake' },
   { href: '/bond', label: 'Bond' },
-  { href: '/schedule', label: 'Schedule' },
   { href: '/history', label: 'History' },
   { href: '/about', label: 'About' }
 ];
