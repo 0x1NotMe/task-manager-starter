@@ -4,9 +4,11 @@ import { useState, useEffect } from "react";
 import { Transaction } from "@/types/transactions";
 import { getTransactionHistory, clearTransactionHistory } from "@/lib/history";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ExternalLinkIcon, Trash2Icon } from "lucide-react";
+import { ExternalLinkIcon, Trash2Icon, AlertCircleIcon, CheckCircleIcon, ClockIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatEther } from "viem";
 
 // Set a default block explorer URL but allow override via environment variable
 const BLOCK_EXPLORER_URL = process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL || "https://explorer.monad.xyz";
@@ -40,10 +42,24 @@ export function TransactionHistory() {
     };
   }, []);
 
-  // Format timestamp to relative time
-  const formatTimestamp = (timestamp: number) => {
+  // Format timestamp to relative time and show exact date on hover
+  const formatTimestampWithTooltip = (timestamp: number) => {
     try {
-      return formatDistanceToNow(timestamp, { addSuffix: true });
+      const relativeTime = formatDistanceToNow(timestamp, { addSuffix: true });
+      const exactDate = new Date(timestamp).toLocaleString();
+      
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-help">{relativeTime}</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{exactDate}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
     } catch (error) {
       return 'Unknown time';
     }
@@ -57,18 +73,56 @@ export function TransactionHistory() {
     }
   };
 
-  // Get status color
-  const getStatusColor = (status: string) => {
+  // Get status with icon and color
+  const getStatusWithIcon = (tx: Transaction) => {
+    const { status, data } = tx;
+    const errorMessage = data?.error || getDefaultErrorMessage(status);
+    
     switch (status) {
       case 'confirmed':
-        return 'text-green-500';
+        return (
+          <div className="flex items-center text-green-500">
+            <CheckCircleIcon className="size-4 mr-1" />
+            <span>Confirmed</span>
+          </div>
+        );
       case 'pending':
-        return 'text-yellow-500';
+        return (
+          <div className="flex items-center text-yellow-500">
+            <ClockIcon className="size-4 mr-1" />
+            <span>Pending</span>
+          </div>
+        );
       case 'failed':
-        return 'text-red-500';
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center text-red-500 cursor-help">
+                  <AlertCircleIcon className="size-4 mr-1" />
+                  <span>Failed</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{errorMessage}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
       default:
-        return 'text-gray-400';
+        return (
+          <div className="text-gray-400">
+            <span>Unknown</span>
+          </div>
+        );
     }
+  };
+
+  // Get default error message based on transaction status
+  const getDefaultErrorMessage = (status: string) => {
+    if (status !== 'failed') return '';
+    
+    return 'Transaction failed. This could be due to insufficient funds, rejected signature, or contract reversion.';
   };
 
   // Format hash for display with defensive check
@@ -82,35 +136,89 @@ export function TransactionHistory() {
       return hash;
     }
     
-    return `${hash.slice(0, 8)}...${hash.slice(-6)}`;
+    return `${hash.slice(0, 6)}...${hash.slice(-4)}`;
   };
 
-  // Format status with defensive check
-  const formatStatus = (status?: string) => {
-    if (!status || typeof status !== 'string') {
-      return 'Unknown';
+  // Format numeric values for better display
+  const formatNumber = (value: string | number) => {
+    if (!value) return '';
+    
+    try {
+      // Try to format as Ether
+      const formattedEther = formatEther(BigInt(value.toString()));
+      
+      // Format number with locale and limit decimals to 6 places
+      const number = parseFloat(formattedEther);
+      
+      // Use a fixed number of decimal places only if needed
+      if (number % 1 !== 0) {
+        // For numbers with decimals, limit to 6 places
+        const formatted = number.toLocaleString(undefined, {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 6
+        });
+        return formatted;
+      } else {
+        // For whole numbers, no decimal places
+        return number.toLocaleString();
+      }
+    } catch (error) {
+      // If formatEther fails, fall back to regular number formatting
+      const numValue = typeof value === 'string' ? Number(value) : value;
+      if (isNaN(numValue)) return value.toString();
+      return numValue.toLocaleString();
     }
-    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  // Get method name with proper formatting
+  const getActionName = (tx: Transaction) => {
+    if (!tx.data?.method) return 'Transaction';
+    
+    // Convert camelCase or snake_case to Title Case with spaces
+    const method = tx.data.method
+      .replace(/([A-Z])/g, ' $1') // Convert camelCase to spaces
+      .replace(/_/g, ' ')         // Convert snake_case to spaces
+      .replace(/^\w/, c => c.toUpperCase()); // Capitalize first letter
+    
+    return method.trim();
   };
 
   // Display a message if no transactions
   if (history.length === 0) {
     return (
-      <div className="p-4 bg-gray-800 rounded-lg">
+      <div className="p-8 bg-gray-900 rounded-lg">
         <p className="text-center text-gray-400">No transaction history available</p>
       </div>
     );
   }
 
-  // Get method name from transaction data
-  const getMethodName = (tx: Transaction) => {
-    return tx.data?.method ? ` (${tx.data.method})` : '';
+  // Render explorer link with hash
+  const renderExplorerLink = (tx: Transaction) => {
+    if (!tx.hash || 
+        typeof tx.hash !== 'string' || 
+        tx.hash.startsWith('error-') || 
+        tx.hash.startsWith('tx-') || 
+        tx.hash.startsWith('pending-')) {
+      return <span className="text-gray-500">Not available</span>;
+    }
+    
+    return (
+      <a 
+        href={`${BLOCK_EXPLORER_URL}/tx/${tx.hash}`} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="flex items-center text-blue-500 hover:text-blue-400 font-mono"
+      >
+        {formatHash(tx.hash)}
+        <ExternalLinkIcon className="size-4 ml-1" />
+      </a>
+    );
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Transaction History</h2>
+        <h2 className="text-2xl font-semibold">Transaction History</h2>
         <Button 
           variant="destructive" 
           size="sm" 
@@ -122,44 +230,35 @@ export function TransactionHistory() {
         </Button>
       </div>
       
-      <div className="overflow-x-auto rounded-md border border-gray-800">
+      <div className="overflow-x-auto rounded-md border border-gray-800 bg-[#0f121a]">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Transaction Hash</TableHead>
+            <TableRow className="border-b border-gray-800">
+              <TableHead>Tx Hash</TableHead>
+              <TableHead>Action</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Age</TableHead>
-              <TableHead className="text-right">Explorer</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {history.map((tx) => (
               <TableRow key={tx.hash} className="border-b border-gray-800">
-                <TableCell className="font-mono text-sm">
-                  {formatHash(tx.hash)}
-                  <span className="font-sans text-xs text-gray-400 ml-2">
-                    {getMethodName(tx)}
-                  </span>
+                <TableCell className="font-mono">
+                  {renderExplorerLink(tx)}
                 </TableCell>
-                <TableCell className={getStatusColor(tx.status)}>
-                  {formatStatus(tx.status)}
-                </TableCell>
-                <TableCell>{formatTimestamp(tx.timestamp)}</TableCell>
-                <TableCell className="text-right">
-                  {tx.hash && typeof tx.hash === 'string' && !tx.hash.startsWith('error-') && 
-                   !tx.hash.startsWith('tx-') && !tx.hash.startsWith('pending-') ? (
-                    <a 
-                      href={`${BLOCK_EXPLORER_URL}/tx/${tx.hash}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center text-blue-500 hover:text-blue-400"
-                    >
-                      <span className="mr-1">View</span>
-                      <ExternalLinkIcon className="size-4" />
-                    </a>
-                  ) : (
-                    <span className="text-gray-500">Not available</span>
+                <TableCell>
+                  {getActionName(tx)}
+                  {tx.data?.amount && (
+                    <span className="text-xs ml-2 text-gray-400">
+                      {formatNumber(tx.data.amount)}
+                    </span>
                   )}
+                </TableCell>
+                <TableCell>
+                  {getStatusWithIcon(tx)}
+                </TableCell>
+                <TableCell>
+                  {formatTimestampWithTooltip(tx.timestamp)}
                 </TableCell>
               </TableRow>
             ))}

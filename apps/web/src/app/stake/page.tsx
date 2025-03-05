@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from 'react';
-import { formatEther, parseEther } from 'viem';
+import { useState, useEffect } from 'react';
+import { formatEther, parseEther, createPublicClient, http } from 'viem';
 import { useRedeem, useStake, useBalance, useNativeBalance, useCurrentPolicyId } from '@/hooks/useTaskManager';
 import { formatBalance } from '@/lib/utils';
 import { useWallet } from '@/hooks/useWallet';
 import { cn } from '@/lib/utils';
 import { Header } from '@/components/layout/header';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { monad } from '@/lib/chains';
 
 export default function StakePage() {
   const { address, connectWallet, isConnecting } = useWallet();
@@ -23,10 +25,37 @@ export default function StakePage() {
     address
   });
   
-  const [activeTab, setActiveTab] = useState<'stake' | 'redeem'>('stake');
   const [amount, setAmount] = useState('');
   const [actionSuccess, setActionSuccess] = useState(false);
   const [actionError, setActionError] = useState<Error | null>(null);
+  const [activeTab, setActiveTab] = useState<'stake' | 'redeem'>('stake');
+  const [currentBlock, setCurrentBlock] = useState<bigint>(0n);
+  
+  // Fetch current block number
+  useEffect(() => {
+    const fetchCurrentBlock = async () => {
+      try {
+        const client = createPublicClient({ 
+          chain: monad,
+          transport: http(process.env.NEXT_PUBLIC_MONAD_RPC_URL || 'https://testnet-rpc.monad.xyz')
+        });
+        const blockNumber = await client.getBlockNumber();
+        setCurrentBlock(blockNumber);
+        
+        // Poll for updates
+        const interval = setInterval(async () => {
+          const updatedBlockNumber = await client.getBlockNumber();
+          setCurrentBlock(updatedBlockNumber);
+        }, 5000);
+        
+        return () => clearInterval(interval);
+      } catch (error) {
+        console.error('Error fetching current block:', error);
+      }
+    };
+    
+    fetchCurrentBlock();
+  }, []);
   
   const handleMaxAmount = () => {
     if (activeTab === 'stake' && nativeBalance && typeof nativeBalance === 'bigint') {
@@ -107,11 +136,18 @@ export default function StakePage() {
         </div>
         
         {/* Policy ID Display */}
-        <div className="mb-6 text-center">
-          <p className="text-gray-400 text-sm">Current Policy ID:</p>
-          <p className="text-lg font-medium text-white">
-            {isLoadingPolicyId ? 'Loading...' : currentPolicyId ?? 'Not available'}
-          </p>
+        <div className="mb-6 text-center flex flex-col items-center gap-2">
+          <div className="inline-flex items-center px-3 py-1 bg-[#111827] rounded-md">
+            <span className="text-gray-400 text-sm">Current Policy ID:</span>
+            <span className="text-white text-sm ml-1">
+              {isLoadingPolicyId ? 'Loading...' : currentPolicyId ?? 'Not available'}
+            </span>
+          </div>
+          <div className="px-3 py-1 bg-[#111827] rounded-md inline-block">
+            <p className="text-xs text-gray-400">
+              Current Block: {currentBlock > 0n ? currentBlock.toString() : 'Loading...'}
+            </p>
+          </div>
         </div>
         
         {/* Stake/Redeem Interface */}

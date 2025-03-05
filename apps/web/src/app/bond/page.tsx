@@ -211,17 +211,17 @@ export default function BondPage() {
         </div>
         
         {/* Policy ID Display */}
-        <div className="mb-6 text-center">
-          <p className="text-gray-400 text-sm">Current Policy ID:</p>
-          <div className="flex items-center justify-center mt-1">
-            <p className="text-lg font-medium text-white">
+        <div className="mb-6 text-center flex flex-col items-center gap-2">
+          <div className="inline-flex items-center px-3 py-1 bg-[#111827] rounded-md">
+            <span className="text-gray-400 text-sm">Current Policy ID:</span>
+            <span className="text-white text-sm ml-1">
               {isLoadingPolicyId ? 'Loading...' : currentPolicyId ?? 'Not available'}
+            </span>
+          </div>
+          <div className="px-3 py-1 bg-[#111827] rounded-md inline-block">
+            <p className="text-xs text-gray-400">
+              Current Block: {currentBlock > 0n ? currentBlock.toString() : 'Loading...'}
             </p>
-            <div className="ml-2 px-3 py-1 bg-[#111827] rounded-md">
-              <p className="text-xs text-gray-400">
-                {currentBlock > 0n ? `Current Block: ${currentBlock.toString()}` : 'Loading block...'}
-              </p>
-            </div>
           </div>
         </div>
         

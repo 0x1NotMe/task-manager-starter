@@ -5,7 +5,7 @@ import { Header } from "@/components/layout/header";
 
 export default function HistoryPage() {
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-black text-white">
       <Header />
       
       <main className="container mx-auto px-4 py-8">
