@@ -8,6 +8,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/layout/header";
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 
 // Define interfaces for ABI types to fix type errors
 interface AbiInput {
@@ -51,6 +53,22 @@ interface AbiItem {
   anonymous?: boolean;
 }
 
+// Code Block Component with Syntax Highlighting
+function CodeBlock({ code, language }: { code: string, language: string }) {
+  return (
+    <div className="rounded-md overflow-hidden">
+      <SyntaxHighlighter
+        language={language}
+        style={oneDark}
+        customStyle={{ margin: 0, borderRadius: '0.375rem' }}
+        showLineNumbers
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  );
+}
+
 // Get Started Tab Component
 function GetStartedTab() {
   return (
@@ -69,9 +87,9 @@ function GetStartedTab() {
             <p>
               The AddressHub contract provides addresses for all required system contracts:
             </p>
-            <pre className="bg-muted p-3 rounded-md overflow-x-auto">
-              <code className="text-xs">
-{`// Import helpers and configure client
+            <CodeBlock 
+              language="typescript" 
+              code={`// Import helpers and configure client
 import { AddressHubHelper } from './utils/address-hub';
 import { publicClient } from './config';
 
@@ -81,11 +99,10 @@ const addressHub = new AddressHubHelper(ADDRESS_HUB, publicClient);
 // Get contract addresses
 const taskManagerAddress = await addressHub.getTaskManagerAddress();
 const shmonadAddress = await addressHub.getShmonadAddress();`}
-              </code>
-            </pre>
+            />
             <p className="text-muted-foreground mt-2">
               <a 
-                href="https://docs.shmonad.xyz/products/monad_testnet_contracts" 
+                href="https://docs.shmonad.xyz/products/task-manager/overview" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
@@ -103,9 +120,9 @@ const shmonadAddress = await addressHub.getShmonadAddress();`}
             <p>
               Tasks require proper encoding in three steps:
             </p>
-            <pre className="bg-muted p-3 rounded-md overflow-x-auto">
-              <code className="text-xs">
-{`// 1. Encode the target function call
+            <CodeBlock 
+              language="typescript" 
+              code={`// 1. Encode the target function call
 const targetCall = encodeFunctionData({
   abi: yourContractAbi,
   functionName: 'yourFunction',
@@ -124,8 +141,7 @@ const taskData = encodeFunctionData({
   functionName: 'executeTask',
   args: [packedData]
 });`}
-              </code>
-            </pre>
+            />
           </div>
         </div>
 
@@ -136,9 +152,9 @@ const taskData = encodeFunctionData({
             <p>
               Before scheduling tasks, ensure sufficient bonds:
             </p>
-            <pre className="bg-muted p-3 rounded-md overflow-x-auto">
-              <code className="text-xs">
-{`// Estimate cost and required bond
+            <CodeBlock 
+              language="typescript" 
+              code={`// Estimate cost and required bond
 const estimatedCost = await taskManager.estimateCost(targetBlock, gasLimit);
 const requiredBond = estimatedCost * BigInt(2); // 2x safety margin
 
@@ -150,8 +166,7 @@ if (!await shmonad.hasSufficientBond(policyId, address, requiredBond)) {
     amount: requiredBond
   });
 }`}
-              </code>
-            </pre>
+            />
           </div>
         </div>
 
@@ -162,9 +177,9 @@ if (!await shmonad.hasSufficientBond(policyId, address, requiredBond)) {
             <p>
               Schedule the task with the Task Manager:
             </p>
-            <pre className="bg-muted p-3 rounded-md overflow-x-auto">
-              <code className="text-xs">
-{`// Define task parameters
+            <CodeBlock 
+              language="typescript" 
+              code={`// Define task parameters
 const task = {
   implementation: executionEnvAddress,
   gas: BigInt(100_000),        // Gas limit
@@ -179,8 +194,7 @@ const { scheduled, executionCost, taskId } = await taskManager.scheduleTask(task
 // Track task status
 console.log(\`Task scheduled with ID: \${taskId}\`);
 const isExecuted = await taskManager.isTaskExecuted(taskId);`}
-              </code>
-            </pre>
+            />
           </div>
         </div>
       </div>
@@ -249,9 +263,9 @@ function ExecutionEnvironmentsTab() {
               </ul>
               <div className="mt-3">
                 <p className="font-medium">Usage example:</p>
-                <pre className="bg-muted p-3 rounded-md overflow-x-auto mt-2">
-                  <code className="text-xs">
-{`// Deploy the environment
+                <CodeBlock 
+                  language="solidity" 
+                  code={`// Deploy the environment
 ReschedulingTaskEnvironment env = new ReschedulingTaskEnvironment(taskManagerAddress);
 
 // Schedule a task using this environment
@@ -262,8 +276,7 @@ taskManager.scheduleTask(
     maxPayment,     // Max payment
     taskData        // Encoded task data
 );`}
-                  </code>
-                </pre>
+                />
               </div>
             </div>
           </div>
@@ -324,9 +337,9 @@ taskManager.scheduleTask(
             
             <div className="mt-3">
               <p className="font-medium">Template:</p>
-              <pre className="bg-muted p-3 rounded-md overflow-x-auto mt-2">
-                <code className="text-xs">
-{`contract CustomTaskEnvironment is TaskExecutionBase {
+              <CodeBlock 
+                language="solidity" 
+                code={`contract CustomTaskEnvironment is TaskExecutionBase {
     constructor(address taskManager_) TaskExecutionBase(taskManager_) {}
 
     function executeTask(bytes calldata taskData) 
@@ -347,15 +360,14 @@ taskManager.scheduleTask(
         return success;
     }
 }`}
-              </code>
-            </pre>
+              />
             </div>
             
             <div className="mt-4">
               <p className="font-medium">Example with validation:</p>
-              <pre className="bg-muted p-3 rounded-md overflow-x-auto mt-2">
-                <code className="text-xs">
-{`contract ValidatedExecutionEnvironment is TaskExecutionBase {
+              <CodeBlock 
+                language="solidity" 
+                code={`contract ValidatedExecutionEnvironment is TaskExecutionBase {
     // Custom error types
     error InvalidTarget();
     error InvalidValue();
@@ -396,8 +408,7 @@ taskManager.scheduleTask(
         return true;
     }
 }`}
-              </code>
-            </pre>
+              />
             </div>
           </div>
         </div>
@@ -411,9 +422,9 @@ taskManager.scheduleTask(
               <p className="mb-2">
                 Instead of modifying the EE, implement control flow in your target contract:
               </p>
-              <pre className="bg-muted p-3 rounded-md overflow-x-auto mt-2">
-                <code className="text-xs">
-{`contract MyTarget {
+              <CodeBlock 
+                language="solidity" 
+                code={`contract MyTarget {
     function executeWithPostChecks(uint256 value) external {
         // Perform the main task
         performTask(value);
@@ -426,8 +437,7 @@ taskManager.scheduleTask(
         }
     }
 }`}
-              </code>
-            </pre>
+              />
             </div>
             
             <div>
@@ -459,6 +469,13 @@ taskManager.scheduleTask(
 function ContractAbisTab() {
   // Debug the contractAbis data structure
   console.log("Contract ABIs:", contractAbis);
+  
+  // Helper function to create a unique key for a function
+  const createFunctionKey = (fn: AbiFunctionItem, index: number): string => {
+    // For overloaded functions, we create a unique key by including the parameter types
+    const paramTypes = fn.inputs?.map(input => input.type).join(',') || '';
+    return `${fn.name}-${paramTypes}-${index}`;
+  };
   
   return (
     <Accordion type="multiple" className="w-full space-y-4">
@@ -524,13 +541,18 @@ function ContractAbisTab() {
                           View Functions
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {viewFunctions.map((fn) => (
+                          {viewFunctions.map((fn, index) => (
                             <div
-                              key={fn.name}
+                              key={createFunctionKey(fn, index)}
                               className="p-3 border rounded-md bg-muted/30"
                             >
                               <h4 className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400">
                                 {fn.name}
+                                {fn.inputs && fn.inputs.length > 0 && (
+                                  <span className="text-xs opacity-70">
+                                    ({fn.inputs.map(i => i.type).join(', ')})
+                                  </span>
+                                )}
                               </h4>
                               <div className="mt-2 space-y-2">
                                 {fn.inputs && fn.inputs.length > 0 && (
@@ -580,9 +602,9 @@ function ContractAbisTab() {
                           Write Functions
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {writeFunctions.map((fn) => (
+                          {writeFunctions.map((fn, index) => (
                             <div
-                              key={fn.name}
+                              key={createFunctionKey(fn, index)}
                               className={cn(
                                 "p-3 border rounded-md bg-muted/30",
                                 fn.stateMutability === "payable"
@@ -593,6 +615,11 @@ function ContractAbisTab() {
                               <div className="flex justify-between items-start">
                                 <h4 className="font-mono text-sm font-medium text-orange-600 dark:text-orange-400">
                                   {fn.name}
+                                  {fn.inputs && fn.inputs.length > 0 && (
+                                    <span className="text-xs opacity-70 ml-1">
+                                      ({fn.inputs.map(i => i.type).join(', ')})
+                                    </span>
+                                  )}
                                 </h4>
                                 {fn.stateMutability === "payable" && (
                                   <span className="text-xs bg-orange-100 dark:bg-orange-900/30 px-2 py-0.5 rounded text-orange-700 dark:text-orange-300">
@@ -648,14 +675,24 @@ function ContractAbisTab() {
                           Events
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {events.map((event: AbiItem, idx: number) => (
+                          {events.map((event: AbiItem, idx: number) => {
+                            // Create a unique key for events as well
+                            const paramTypes = event.inputs?.map(input => input.type).join(',') || '';
+                            const eventKey = `${event.name}-${paramTypes}-${idx}`;
+                            
+                            return (
                             <div
-                              key={`${event.name}-${idx}`}
+                              key={eventKey}
                               className="p-3 border rounded-md bg-muted/30"
                             >
                               <div className="flex justify-between items-start">
                                 <h4 className="font-mono text-sm font-medium text-purple-600 dark:text-purple-400">
                                   {event.name}
+                                  {event.inputs && event.inputs.length > 0 && (
+                                    <span className="text-xs opacity-70 ml-1">
+                                      ({event.inputs.map(i => i.type).join(', ')})
+                                    </span>
+                                  )}
                                 </h4>
                                 {event.anonymous && (
                                   <span className="text-xs bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 rounded text-purple-700 dark:text-purple-300">
@@ -685,7 +722,8 @@ function ContractAbisTab() {
                                 </div>
                               )}
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
