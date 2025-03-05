@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/useWallet";
 import { useNativeBalance, formatBalance } from "@/hooks/useNativeBalance";
+import { useBalance } from "@/hooks/useTaskManager";
 
 // Add history to the navigation links
 const navLinks = [
@@ -21,7 +22,8 @@ const navLinks = [
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { address, isConnected, isConnecting, connectWallet, disconnectWallet } = useWallet();
-  const { data: nativeBalance, isLoading: isLoadingBalance } = useNativeBalance(address);
+  const { data: nativeBalance, isLoading: isLoadingNativeBalance } = useNativeBalance(address);
+  const { data: shMonBalance, isLoading: isLoadingShMonBalance } = useBalance(address);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -57,12 +59,25 @@ export function Header() {
           <div className="flex items-center space-x-4">
             {isConnected ? (
               <div className="hidden md:flex items-center space-x-4">
-                <div className="flex items-center space-x-1 bg-[#0f1729]/60 px-3 py-1 rounded-full border border-[#2d3748]">
-                  <div className="h-3 w-3 bg-indigo-600 rounded-full"></div>
-                  <span className="text-sm font-medium">
-                    {isLoadingBalance ? '...' : `${formatBalance(nativeBalance)} TMON`}
-                  </span>
+                {/* Display both token balances */}
+                <div className="flex space-x-2">
+                  {/* TMON Balance */}
+                  <div className="flex items-center space-x-1 bg-[#0f1729]/60 px-3 py-1 rounded-full border border-[#2d3748]">
+                    <div className="h-3 w-3 bg-indigo-600 rounded-full"></div>
+                    <span className="text-sm font-medium">
+                      {isLoadingNativeBalance ? '...' : `${formatBalance(nativeBalance)} TMON`}
+                    </span>
+                  </div>
+                  
+                  {/* shMON Balance */}
+                  <div className="flex items-center space-x-1 bg-[#0f1729]/60 px-3 py-1 rounded-full border border-[#2d3748]">
+                    <div className="h-3 w-3 bg-[#4845eb] rounded-full"></div>
+                    <span className="text-sm font-medium">
+                      {isLoadingShMonBalance ? '...' : `${formatBalance(shMonBalance)} shMON`}
+                    </span>
+                  </div>
                 </div>
+                
                 <span className="text-sm text-muted-foreground">
                   {address?.slice(0, 6)}...{address?.slice(-4)}
                 </span>
@@ -112,12 +127,25 @@ export function Header() {
           <div className="flex flex-col space-y-2">
             {isConnected ? (
               <div className="flex flex-col space-y-2">
-                <div className="flex items-center space-x-1 bg-[#0f1729]/60 px-3 py-1 rounded-full border border-[#2d3748] w-fit">
-                  <div className="h-3 w-3 bg-indigo-600 rounded-full"></div>
-                  <span className="text-sm font-medium">
-                    {isLoadingBalance ? '...' : `${formatBalance(nativeBalance)} TMON`}
-                  </span>
+                {/* Display both token balances in mobile view */}
+                <div className="flex flex-col space-y-2">
+                  {/* TMON Balance */}
+                  <div className="flex items-center space-x-1 bg-[#0f1729]/60 px-3 py-1 rounded-full border border-[#2d3748] w-fit">
+                    <div className="h-3 w-3 bg-indigo-600 rounded-full"></div>
+                    <span className="text-sm font-medium">
+                      {isLoadingNativeBalance ? '...' : `${formatBalance(nativeBalance)} TMON`}
+                    </span>
+                  </div>
+                  
+                  {/* shMON Balance */}
+                  <div className="flex items-center space-x-1 bg-[#0f1729]/60 px-3 py-1 rounded-full border border-[#2d3748] w-fit">
+                    <div className="h-3 w-3 bg-[#4845eb] rounded-full"></div>
+                    <span className="text-sm font-medium">
+                      {isLoadingShMonBalance ? '...' : `${formatBalance(shMonBalance)} shMON`}
+                    </span>
+                  </div>
                 </div>
+                
                 <span className="text-sm text-muted-foreground">
                   {address?.slice(0, 6)}...{address?.slice(-4)}
                 </span>
