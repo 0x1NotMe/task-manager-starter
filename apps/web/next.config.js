@@ -13,6 +13,14 @@ const nextConfig = {
     ],
     dangerouslyAllowSVG: true,
   },
+  // Enable importing JSON modules
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.json$/,
+      type: 'json',
+    });
+    return config;
+  },
 };
 
 export default nextConfig;
