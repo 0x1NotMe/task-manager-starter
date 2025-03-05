@@ -10,6 +10,7 @@ import {
 import { useWallet } from '@/hooks/useWallet';
 import { TASK_GAS_CATEGORIES } from '@/contracts/constants';
 import { Header } from '@/components/layout/header';
+import { TermTooltip } from '@/components/ui/term-tooltip';
 
 // Define the task status interface
 interface TaskStatus {
@@ -145,7 +146,13 @@ export default function TasksPage() {
           
           <div className="space-y-4 p-4 bg-[#0f1729]/60 border border-[#2d3748] rounded-md">
             <div>
-              <label className="block mb-1">Implementation Address</label>
+              <label className="block mb-1">
+                Implementation Address
+                <TermTooltip 
+                  term="" 
+                  explanation="The smart contract address that will execute your task. This contract must implement the required execution environment interface."
+                />
+              </label>
               <input
                 type="text"
                 className="w-full p-2 bg-[#0a0f1d] border border-[#2d3748] rounded text-white"
@@ -157,20 +164,61 @@ export default function TasksPage() {
             </div>
             
             <div>
-              <label className="block mb-1">Gas Limit</label>
+              <label className="block mb-1">
+                Gas Limit 
+                <TermTooltip 
+                  term="" 
+                  explanation="Gas represents computational effort required to execute your task on-chain. Higher gas limits allow more complex operations but may cost more."
+                />
+              </label>
               <select
                 className="w-full p-2 bg-[#0a0f1d] border border-[#2d3748] rounded text-white"
                 value={taskParams.gasLimit}
                 onChange={(e) => setTaskParams({ ...taskParams, gasLimit: e.target.value })}
               >
-                <option value={TASK_GAS_CATEGORIES.SMALL.toString()}>Small (≤ 100,000 gas)</option>
-                <option value={TASK_GAS_CATEGORIES.MEDIUM.toString()}>Medium (≤ 250,000 gas)</option>
-                <option value={TASK_GAS_CATEGORIES.LARGE.toString()}>Large (≤ 750,000 gas)</option>
+                <option value={TASK_GAS_CATEGORIES.SMALL.toString()}>
+                  Small (≤ 100,000 gas)
+                </option>
+                <option value={TASK_GAS_CATEGORIES.MEDIUM.toString()}>
+                  Medium (≤ 250,000 gas)
+                </option>
+                <option value={TASK_GAS_CATEGORIES.LARGE.toString()}>
+                  Large (≤ 750,000 gas)
+                </option>
               </select>
+              <div className="text-sm text-gray-400 mt-1 space-y-1">
+                <p>
+                  <span className="font-medium text-gray-300">Small:</span> Simple token transfers or basic contract calls
+                  <TermTooltip 
+                    term="" 
+                    explanation="Small gas category is suitable for simple tasks like token transfers or basic contract calls that don't require complex computation."
+                  />
+                </p>
+                <p>
+                  <span className="font-medium text-gray-300">Medium:</span> Swaps or multi-step transactions
+                  <TermTooltip 
+                    term="" 
+                    explanation="Medium gas category is designed for moderately complex operations like swaps, multi-step transactions, or operations involving multiple contract interactions."
+                  />
+                </p>
+                <p>
+                  <span className="font-medium text-gray-300">Large:</span> Complex DeFi operations or batch transactions
+                  <TermTooltip 
+                    term="" 
+                    explanation="Large gas category is for complex transactions that require significant computation, such as batch operations, complex DeFi interactions, or operations involving many contract calls."
+                  />
+                </p>
+              </div>
             </div>
             
             <div>
-              <label className="block mb-1">Target Block</label>
+              <label className="block mb-1">
+                Target Block
+                <TermTooltip 
+                  term="" 
+                  explanation="The block number at which your task will be executed. Must be greater than the current block."
+                />
+              </label>
               <input
                 type="text"
                 className="w-full p-2 bg-[#0a0f1d] border border-[#2d3748] rounded text-white"
@@ -182,7 +230,13 @@ export default function TasksPage() {
             </div>
             
             <div>
-              <label className="block mb-1">Max Payment (MONAD)</label>
+              <label className="block mb-1">
+                Max Payment (MONAD)
+                <TermTooltip 
+                  term="" 
+                  explanation="The maximum amount of MONAD tokens you're willing to pay for task execution. Unused tokens will be refunded."
+                />
+              </label>
               <input
                 type="text"
                 className="w-full p-2 bg-[#0a0f1d] border border-[#2d3748] rounded text-white"
@@ -193,7 +247,13 @@ export default function TasksPage() {
             </div>
             
             <div>
-              <label className="block mb-1">Task Data (hex)</label>
+              <label className="block mb-1">
+                Task Data (hex)
+                <TermTooltip 
+                  term="" 
+                  explanation="The encoded function call data that will be passed to the execution environment. This is typically an ABI-encoded function call with parameters."
+                />
+              </label>
               <textarea
                 className="w-full p-2 bg-[#0a0f1d] border border-[#2d3748] rounded text-white"
                 placeholder="0x..."

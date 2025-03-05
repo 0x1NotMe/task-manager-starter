@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { createPublicClient, http } from 'viem';
 import { monad } from '@/lib/chains';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TermTooltip } from '@/components/ui/term-tooltip';
 
 export default function FundsPage() {
   const { address, connectWallet, isConnecting } = useWallet();
@@ -249,7 +250,13 @@ export default function FundsPage() {
             <div className="h-10 w-10 bg-[#4845eb] rounded-full mr-3 flex items-center justify-center">
               <div className="h-4 w-4 bg-black rounded-full"></div>
             </div>
-            <span className="text-white text-2xl font-bold">shMonad</span>
+            <span className="text-white text-2xl font-bold">
+              <TermTooltip 
+                term="shMonad" 
+                explanation="Staked MONAD tokens (shMON) represent your stake in the network. You receive shMON when you stake native MONAD tokens." 
+                showIcon={false}
+              />
+            </span>
           </div>
           <span className="ml-3 text-xs py-0.5 px-2 rounded border border-gray-700 text-gray-300">testnet</span>
         </div>
@@ -277,31 +284,46 @@ export default function FundsPage() {
                 value="stake" 
                 className="flex-1 rounded-full text-sm font-medium transition-colors data-[state=active]:bg-[#4845eb]"
               >
-                Stake
+                <TermTooltip 
+                  term="Stake" 
+                  explanation="Staking converts your TMON tokens to shMON tokens. This lets you earn rewards while maintaining liquidity."
+                />
               </TabsTrigger>
               <TabsTrigger 
                 value="redeem" 
                 className="flex-1 rounded-full text-sm font-medium transition-colors data-[state=active]:bg-[#4845eb]"
               >
-                Redeem
+                <TermTooltip 
+                  term="Redeem" 
+                  explanation="Redeeming converts your shMON tokens back to TMON tokens, allowing you to withdraw your stake."
+                />
               </TabsTrigger>
               <TabsTrigger 
                 value="bond" 
                 className="flex-1 rounded-full text-sm font-medium transition-colors data-[state=active]:bg-[#4845eb]"
               >
-                Bond
+                <TermTooltip 
+                  term="Bond" 
+                  explanation="Bonding locks your shMON tokens to a specific policy, enabling you to schedule tasks through the Task Manager."
+                />
               </TabsTrigger>
               <TabsTrigger 
                 value="unbond" 
                 className="flex-1 rounded-full text-sm font-medium transition-colors data-[state=active]:bg-[#4845eb]"
               >
-                Unbond
+                <TermTooltip 
+                  term="Unbond" 
+                  explanation="Unbonding initiates the process of releasing your bonded shMON tokens. There is a waiting period before you can claim them."
+                />
               </TabsTrigger>
               <TabsTrigger 
                 value="claim" 
                 className="flex-1 rounded-full text-sm font-medium transition-colors data-[state=active]:bg-[#4845eb]"
               >
-                Claim
+                <TermTooltip 
+                  term="Claim" 
+                  explanation="Claiming allows you to withdraw your unbonded shMON tokens after the unbonding period has completed."
+                />
               </TabsTrigger>
             </TabsList>
             
@@ -314,7 +336,11 @@ export default function FundsPage() {
                     Available to Stake:
                   </p>
                   <p className="text-lg font-medium text-white">
-                    {isLoadingNativeBalance ? '...' : `${formatBalance(nativeBalance)} TMON`}
+                    {isLoadingNativeBalance ? '...' : `${formatBalance(nativeBalance)} `}
+                    <TermTooltip 
+                      term="TMON" 
+                      explanation="TMON is the native token of the Monad network, used for paying transaction fees and staking."
+                    />
                   </p>
                 </div>
                 
@@ -382,7 +408,11 @@ export default function FundsPage() {
                     Available to Redeem:
                   </p>
                   <p className="text-lg font-medium text-white">
-                    {isLoadingBalance ? '...' : `${formatBalance(balance)} shMON`}
+                    {isLoadingBalance ? '...' : `${formatBalance(balance)} `}
+                    <TermTooltip 
+                      term="shMON" 
+                      explanation="Staked MONAD tokens (shMON) represent your stake in the network. You receive shMON when you stake native MONAD tokens."
+                    />
                   </p>
                 </div>
                 
