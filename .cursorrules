@@ -1,0 +1,45 @@
+# Task Manager DApp Development Rules
+
+## Project Overview
+This project is a Task Manager DApp built on a Next.js/Hono template, designed to interact with the Monad blockchain. The DApp allows users to schedule tasks, stake shMONAD tokens, and bond tokens to the Task Manager contract.
+
+## Development Guidelines
+
+### Code Structure
+- Follow a modular approach with clear separation of concerns
+- Keep components small and focused on a single responsibility
+- Use hooks for shared logic and state management
+- Maintain consistent file naming and organization
+
+### Solidity Integration
+- Use the latest Solidity best practices for contract interactions
+- Implement proper error handling for all contract calls
+- Follow gas optimization patterns
+- Ensure secure handling of user funds and sensitive operations
+
+### Frontend Development
+- Use TypeScript for all components and functions
+- Implement responsive design for all UI components
+- Follow accessibility best practices
+- Use React Query for data fetching and state management
+- Implement proper loading and error states
+
+### Testing
+- Write unit tests for all critical functions
+- Implement integration tests for contract interactions
+- Test edge cases and error handling
+- Ensure cross-browser compatibility
+
+## Technology Stack
+- Next.js for frontend framework
+- Hono for API routes
+- React Query for data fetching
+- Viem for Ethereum interactions
+- TypeScript for type safety
+- Tailwind CSS for styling
+
+## Deployment
+- Use Vercel for frontend deployment
+- Implement proper environment variable management
+- Set up CI/CD pipelines for automated testing and deployment
+- Configure proper monitoring and error tracking 
